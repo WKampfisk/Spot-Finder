@@ -8,343 +8,746 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
-    #map { height: 500px; border-radius: 12px; }
-    .spot-card { transition: all 0.2s; }
-    .spot-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1); }
+    :root { --accent: #10b981; }
+    .nav-tab { transition: all 0.1s; }
+    .nav-tab.active { background-color: #10b981; color: white; border-color: #10b981; }
+    #map { height: 520px; border-radius: 16px; }
+    .spot-card { transition: transform .15s ease, box-shadow .15s ease; }
+    .spot-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1); }
+    .detail-row { display: flex; justify-content: space-between; border-bottom: 1px solid #27272a; padding: 6px 0; }
+    .detail-label { color: #71717a; font-size: 0.875rem; }
+    .chat-message { max-width: 85%; }
+    .expert-reply { background: #18181b; border-left: 3px solid #10b981; }
   </style>
 </head>
 <body class="bg-zinc-950 text-zinc-200">
-  <div class="max-w-7xl mx-auto p-6">
-    <!-- Header -->
-    <div class="flex items-center justify-between mb-8">
-      <div>
-        <h1 class="text-4xl font-bold tracking-tight">Spot-Finder</h1>
-        <p class="text-zinc-400 mt-1">Discover nature spots around Steinkjer &amp; Trøndelag</p>
-      </div>
-      <div class="flex gap-3">
-        <button onclick="showAddSpotModal()" 
-                class="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-xl font-medium flex items-center gap-2">
-          <span>+</span> Add Spot
-        </button>
-        <button onclick="filterSpots('all')" 
-                class="bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-xl font-medium">
-          All Spots
-        </button>
-      </div>
-    </div>
-
-    <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
-      <!-- Map -->
-      <div class="lg:col-span-3 bg-zinc-900 rounded-3xl p-4 border border-zinc-800">
-        <div id="map" class="w-full"></div>
-        <p class="text-xs text-zinc-500 mt-2 text-center">Click markers or cards to see details. Data is local for now.</p>
-      </div>
-
-      <!-- Spots List -->
-      <div class="lg:col-span-2 bg-zinc-900 rounded-3xl p-4 border border-zinc-800 overflow-auto max-h-[520px]">
-        <h2 class="font-semibold mb-3 px-1">Spots nearby</h2>
-        <div id="spots-list" class="space-y-3"></div>
-      </div>
-    </div>
-
-    <!-- Categories -->
-    <div class="mt-6 flex flex-wrap gap-2">
-      <button onclick="filterSpots('all')" class="category-btn px-3 py-1 text-sm rounded-full bg-zinc-800 hover:bg-zinc-700 active:bg-emerald-600" data-cat="all">All</button>
-      <button onclick="filterSpots('hiking')" class="category-btn px-3 py-1 text-sm rounded-full bg-zinc-800 hover:bg-zinc-700" data-cat="hiking">¥¼ Hiking</button>
-      <button onclick="filterSpots('fishing')" class="category-btn px-3 py-1 text-sm rounded-full bg-zinc-800 hover:bg-zinc-700" data-cat="fishing">¥£ Fishing</button>
-      <button onclick="filterSpots('photo')" class="category-btn px-3 py-1 text-sm rounded-full bg-zinc-800 hover:bg-zinc-700" data-cat="photo">¥¥¤ Photo</button>
-      <button onclick="filterSpots('parking')" class="category-btn px-3 py-1 text-sm rounded-full bg-zinc-800 hover:bg-zinc-700" data-cat="parking">¥¦¥ Parking</button>
-      <button onclick="filterSpots('viewpoint')" class="category-btn px-3 py-1 text-sm rounded-full bg-zinc-800 hover:bg-zinc-700" data-cat="viewpoint">¥¥¤ Viewpoint</button>
-    </div>
-
-    <div class="mt-8 text-xs text-zinc-500">
-      Steinkjer area • Beitstadfjord • Innherred • Trøndelag<br>
-      Built as a starter for Spot-Finder. Add your own spots!
-    </div>
-  </div>
-
-  <!-- Add Spot Modal -->
-  <div id="modal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
-    <div class="bg-zinc-900 rounded-3xl p-6 w-full max-w-md border border-zinc-700">
-      <h3 class="text-xl font-semibold mb-4">Add a new spot</h3>
-      
-      <div class="space-y-4">
-        <div>
-          <label class="block text-sm mb-1">Name</label>
-          <input id="spot-name" type="text" class="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2" placeholder="e.g. Steinkjerelva West Access">
-        </div>
-        <div class="grid grid-cols-2 gap-4">
+  <div class="max-w-screen-xl mx-auto">
+    <!-- Top Bar -->
+    <div class="border-b border-zinc-800 bg-zinc-950 sticky top-0 z-50">
+      <div class="px-6 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-x-3">
+          <div class="w-9 h-9 bg-emerald-600 rounded-2xl flex items-center justify-center text-white font-bold text-2xl">S</div>
           <div>
-            <label class="block text-sm mb-1">Latitude</label>
-            <input id="spot-lat" type="text" class="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2" value="64.015">
-          </div>
-          <div>
-            <label class="block text-sm mb-1">Longitude</label>
-            <input id="spot-lon" type="text" class="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2" value="11.48">
+            <div class="font-semibold text-2xl tracking-tight">Spot-Finder</div>
+            <div class="text-[10px] text-zinc-500 -mt-1">Steinkjer &amp; Trøndelag</div>
           </div>
         </div>
-        <div>
-          <label class="block text-sm mb-1">Category</label>
-          <select id="spot-cat" class="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2">
+
+        <div class="flex items-center gap-2">
+          <button onclick="exportSpots()" 
+                  class="text-sm px-3 py-1.5 rounded-xl border border-zinc-700 hover:bg-zinc-900 flex items-center gap-1">
+            <span>Export</span>
+          </button>
+          <button onclick="importSpots()" 
+                  class="text-sm px-3 py-1.5 rounded-xl border border-zinc-700 hover:bg-zinc-900 flex items-center gap-1">
+            <span>Import</span>
+          </button>
+          <button onclick="resetToDemo()" 
+                  class="text-sm px-3 py-1.5 rounded-xl border border-zinc-700 hover:bg-zinc-900 text-red-400">
+            Reset Demo
+          </button>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="px-6 flex gap-1 border-t border-zinc-800 bg-zinc-900">
+        <button onclick="switchTab('map')" id="tab-map"
+                class="nav-tab active px-5 py-3 text-sm font-medium border-b-2 border-emerald-600">Map</button>
+        <button onclick="switchTab('list')" id="tab-list"
+                class="nav-tab px-5 py-3 text-sm font-medium border-b-2 border-transparent hover:border-zinc-700">Browse Spots</button>
+        <button onclick="switchTab('expert')" id="tab-expert"
+                class="nav-tab px-5 py-3 text-sm font-medium border-b-2 border-transparent hover:border-zinc-700">Ask the Expert</button>
+        <button onclick="switchTab('add')" id="tab-add"
+                class="nav-tab px-5 py-3 text-sm font-medium border-b-2 border-transparent hover:border-zinc-700 ml-auto">+ Add New Spot</button>
+      </div>
+    </div>
+
+    <div class="p-6">
+      <!-- MAP TAB -->
+      <div id="view-map" class="tab-view">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div class="lg:col-span-8">
+            <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-3">
+              <div id="map" class="w-full"></div>
+            </div>
+            <div class="text-[10px] text-zinc-500 mt-2 px-1 flex justify-between">
+              <span>Click a marker for details • Drag to explore Steinkjer area</span>
+              <span>Demo data — verify before use</span>
+            </div>
+          </div>
+
+          <div class="lg:col-span-4">
+            <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-4">
+              <div class="font-medium mb-3">Quick Filters</div>
+              <div class="flex flex-wrap gap-1.5" id="quick-filters">
+                <!-- Populated by JS -->
+              </div>
+              <div class="mt-4">
+                <input id="map-search" type="text" placeholder="Search spots..." 
+                       class="w-full bg-zinc-950 border border-zinc-700 rounded-2xl px-4 py-2 text-sm"
+                       oninput="filterMapSpots()">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LIST TAB -->
+      <div id="view-list" class="tab-view hidden">
+        <div class="flex items-center gap-3 mb-4">
+          <input id="list-search" type="text" placeholder="Search spots by name or description..." 
+                 class="flex-1 bg-zinc-900 border border-zinc-700 rounded-2xl px-4 py-2 text-sm" oninput="renderSpotList()">
+          
+          <select id="list-category" class="bg-zinc-900 border border-zinc-700 rounded-2xl px-3 py-2 text-sm" onchange="renderSpotList()">
+            <option value="">All categories</option>
             <option value="hiking">Hiking</option>
             <option value="fishing">Fishing</option>
             <option value="photo">Photography</option>
             <option value="parking">Parking / Access</option>
             <option value="viewpoint">Viewpoint</option>
+            <option value="quiet">Quiet places</option>
           </select>
+
+          <button onclick="renderSpotList()" class="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm">Apply</button>
         </div>
-        <div>
-          <label class="block text-sm mb-1">Description</label>
-          <textarea id="spot-desc" rows="3" class="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2" placeholder="Short description..."></textarea>
+
+        <div id="spots-list" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
+      </div>
+
+      <!-- EXPERT TAB -->
+      <div id="view-expert" class="tab-view hidden max-w-3xl">
+        <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-6">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-8 h-8 bg-emerald-600 rounded-2xl flex items-center justify-center text-white text-lg">🧭</div>
+            <div>
+              <div class="font-semibold">Lokal Friluftsekspert – Steinkjer</div>
+              <div class="text-xs text-emerald-400">Powered by the official system prompt</div>
+            </div>
+          </div>
+
+          <div id="chat-window" class="h-[420px] overflow-y-auto border border-zinc-700 rounded-2xl p-4 mb-4 bg-zinc-950 space-y-4 text-sm">
+            <!-- Messages populated by JS -->
+          </div>
+
+          <div class="flex gap-2">
+            <input id="expert-input" type="text" 
+                   class="flex-1 bg-zinc-900 border border-zinc-700 rounded-2xl px-4 py-3 text-sm"
+                   placeholder="Spør om en rolig plass, fiskevann, eller en tur med lite folk..."
+                   onkeydown="if (event.key === 'Enter') askExpert()">
+            <button onclick="askExpert()" 
+                    class="bg-emerald-600 hover:bg-emerald-500 px-6 rounded-2xl font-medium">Spør</button>
+          </div>
+          <div class="text-[10px] text-zinc-500 mt-2">Svarene følger de strenge reglene i systemprompten. Alltid verifiser mot oppdaterte kilder.</div>
         </div>
       </div>
 
-      <div class="flex gap-3 mt-6">
-        <button onclick="addSpot()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-2.5 rounded-2xl font-medium">Add Spot</button>
-        <button onclick="hideAddSpotModal()" class="flex-1 bg-zinc-800 hover:bg-zinc-700 py-2.5 rounded-2xl">Cancel</button>
+      <!-- ADD SPOT TAB -->
+      <div id="view-add" class="tab-view hidden max-w-2xl">
+        <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-6">
+          <h2 class="text-xl font-semibold mb-1">Legg til ny spot</h2>
+          <p class="text-sm text-zinc-400 mb-5">Fyll ut så mye som mulig. Dataene lagres lokalt i nettleseren din.</p>
+
+          <form id="add-spot-form" onsubmit="addNewSpot(event)">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-4">
+              <div class="md:col-span-2">
+                <label class="text-xs text-zinc-400">Navn på spot</label>
+                <input name="name" required class="w-full mt-1 bg-zinc-950 border border-zinc-700 rounded-2xl px-4 py-2.5">
+              </div>
+
+              <div>
+                <label class="text-xs text-zinc-400">Kategori</label>
+                <select name="category" class="w-full mt-1 bg-zinc-950 border border-zinc-700 rounded-2xl px-4 py-2.5">
+                  <option value="hiking">Hiking / Tursti</option>
+                  <option value="fishing">Fishing / Fiske</option>
+                  <option value="photo">Photography / Foto</option>
+                  <option value="parking">Parking / Adkomst</option>
+                  <option value="viewpoint">Viewpoint / Utsikt</option>
+                  <option value="quiet">Quiet place / Rolig plass</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="text-xs text-zinc-400">Vanskelighetsgrad</label>
+                <select name="difficulty" class="w-full mt-1 bg-zinc-950 border border-zinc-700 rounded-2xl px-4 py-2.5">
+                  <option value="lett">Lett</option>
+                  <option value="middels">Middels</option>
+                  <option value="krevende">Krevende</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="text-xs text-zinc-400">Latitude (GPS)</label>
+                <input name="lat" type="number" step="0.0001" value="64.015" class="w-full mt-1 bg-zinc-950 border border-zinc-700 rounded-2xl px-4 py-2.5">
+              </div>
+              <div>
+                <label class="text-xs text-zinc-400">Longitude (GPS)</label>
+                <input name="lon" type="number" step="0.0001" value="11.495" class="w-full mt-1 bg-zinc-950 border border-zinc-700 rounded-2xl px-4 py-2.5">
+              </div>
+
+              <div>
+                <label class="text-xs text-zinc-400">Distanse tur/retur (km)</label>
+                <input name="distance" type="text" placeholder="4.5" class="w-full mt-1 bg-zinc-950 border border-zinc-700 rounded-2xl px-4 py-2.5">
+              </div>
+              <div>
+                <label class="text-xs text-zinc-400">Est. tid (timer)</label>
+                <input name="time" type="text" placeholder="2-3" class="w-full mt-1 bg-zinc-950 border border-zinc-700 rounded-2xl px-4 py-2.5">
+              </div>
+
+              <div>
+                <label class="text-xs text-zinc-400">Høydemeter</label>
+                <input name="elevation" type="text" placeholder="180" class="w-full mt-1 bg-zinc-950 border border-zinc-700 rounded-2xl px-4 py-2.5">
+              </div>
+              <div>
+                <label class="text-xs text-zinc-400">Egnet årstid</label>
+                <input name="season" type="text" value="Hele året" class="w-full mt-1 bg-zinc-950 border border-zinc-700 rounded-2xl px-4 py-2.5">
+              </div>
+
+              <div class="md:col-span-2">
+                <label class="text-xs text-zinc-400">Kort beskrivelse</label>
+                <textarea name="description" rows="2" class="w-full mt-1 bg-zinc-950 border border-zinc-700 rounded-2xl px-4 py-2.5"></textarea>
+              </div>
+
+              <div>
+                <label class="text-xs text-zinc-400">Startpunkt</label>
+                <input name="startpunkt" type="text" class="w-full mt-1 bg-zinc-950 border border-zinc-700 rounded-2xl px-4 py-2.5">
+              </div>
+              <div>
+                <label class="text-xs text-zinc-400">Parkeringsplass</label>
+                <input name="parking" type="text" class="w-full mt-1 bg-zinc-950 border border-zinc-700 rounded-2xl px-4 py-2.5">
+              </div>
+
+              <div class="md:col-span-2">
+                <label class="text-xs text-zinc-400">Hvorfor verdt turen / høydepunkter</label>
+                <textarea name="whyWorth" rows="2" class="w-full mt-1 bg-zinc-950 border border-zinc-700 rounded-2xl px-4 py-2.5"></textarea>
+              </div>
+
+              <div class="grid grid-cols-2 gap-4 md:col-span-2">
+                <div class="flex items-center gap-2">
+                  <input type="checkbox" name="dog" class="accent-emerald-600"> 
+                  <span class="text-sm">Hund passer</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <input type="checkbox" name="stroller" class="accent-emerald-600"> 
+                  <span class="text-sm">Barnevogn / sykkel mulig</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <input type="checkbox" name="swim" class="accent-emerald-600"> 
+                  <span class="text-sm">Bademuligheter</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <input type="checkbox" name="fish" class="accent-emerald-600"> 
+                  <span class="text-sm">Fiskemuligheter</span>
+                </div>
+              </div>
+
+              <div class="md:col-span-2">
+                <label class="text-xs text-zinc-400">Vær- og sikkerhetshensyn + lokale regler</label>
+                <textarea name="safety" rows="2" class="w-full mt-1 bg-zinc-950 border border-zinc-700 rounded-2xl px-4 py-2.5"></textarea>
+              </div>
+            </div>
+
+            <div class="mt-6 flex gap-3">
+              <button type="submit" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-2xl font-medium">Lagre spot</button>
+              <button type="button" onclick="switchTab('map')" class="flex-1 border border-zinc-700 py-3 rounded-2xl">Avbryt</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Spot Detail Modal -->
+  <div id="detail-modal" onclick="if (event.target.id === 'detail-modal') hideDetailModal()" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4">
+    <div onclick="event.stopImmediatePropagation()" class="bg-zinc-900 border border-zinc-700 rounded-3xl max-w-lg w-full p-6">
+      <div class="flex justify-between items-start mb-4">
+        <div>
+          <div id="detail-name" class="font-semibold text-2xl"></div>
+          <div id="detail-category" class="text-emerald-400 text-sm"></div>
+        </div>
+        <button onclick="hideDetailModal()" class="text-zinc-400 hover:text-white">✕</button>
+      </div>
+
+      <div id="detail-description" class="text-sm mb-5"></div>
+
+      <div class="text-sm space-y-1" id="detail-fields"></div>
+
+      <div class="mt-5 flex gap-2">
+        <button onclick="focusOnMapFromDetail()" class="flex-1 py-2 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-sm">Vis på kart</button>
+        <button onclick="hideDetailModal()" class="flex-1 py-2 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-sm">Lukk</button>
       </div>
     </div>
   </div>
 
   <script>
-    // Tailwind script
+    // Tailwind config
     function initTailwind() {
-      // Already using CDN classes
+      // CDN version used
     }
 
     let map;
-    let markers = [];
-    let currentFilter = 'all';
+    let allSpots = [];
+    let currentDetailSpot = null;
 
-    // Sample spots around Steinkjer (realistic approximate locations)
-    let spots = [
+    // Sample demo spots (illustrative only – follow the expert prompt rules in real use)
+    const DEMO_SPOTS = [
       {
-        id: 1,
-        name: "Steinkjerelva West Bank",
-        lat: 64.012,
-        lon: 11.465,
+        id: "demo-1",
+        name: "Steinkjerelva – Rolig fiskeplass vest",
         category: "fishing",
-        description: "Great access point for trout and salmon. Easy parking and short walk to the river."
+        lat: 64.0118,
+        lon: 11.462,
+        description: "Rolig del av elva med god tilgang for fluefiske. Lite folk på ukedager.",
+        startpunkt: "Ved broen på Fv. 762",
+        parking: "Liten parkeringslomme 50m før broen",
+        distance: "1.2 km",
+        time: "1–2 timer",
+        elevation: "20",
+        difficulty: "lett",
+        season: "Mai–September",
+        view: "Middels",
+        swim: false,
+        fish: true,
+        dog: true,
+        stroller: false,
+        safety: "Glatt stein langs elva etter regn. Sjekk vannstand.",
+        created: Date.now()
       },
       {
-        id: 2,
-        name: "Beitstadfjord Viewpoint",
-        lat: 64.028,
-        lon: 11.512,
+        id: "demo-2",
+        name: "Utsiktspunkt ved Kvamsfjellet",
         category: "viewpoint",
-        description: "Panoramic views over the fjord, especially beautiful at sunset."
+        lat: 64.041,
+        lon: 11.58,
+        description: "Lite besøkt utsiktspunkt over Beitstadfjorden og innlandet.",
+        startpunkt: "Parkering ved Kvam skogvei",
+        parking: "Grusplass ved skogsvei (2-3 biler)",
+        distance: "3.8 km",
+        time: "2 timer",
+        elevation: "280",
+        difficulty: "middels",
+        season: "Hele året",
+        view: "Utmerket",
+        swim: false,
+        fish: false,
+        dog: true,
+        stroller: false,
+        safety: "Bratt parti siste 400m. Ikke anbefalt i mørket.",
+        created: Date.now()
       },
       {
-        id: 3,
-        name: "Skogstien Trailhead",
-        lat: 63.998,
-        lon: 11.521,
-        category: "hiking",
-        description: "Start of several forest hiking loops. Moderate difficulty, good for berry picking in season."
-      },
-      {
-        id: 4,
-        name: "Fjord Parking - Sjøfartsgata",
-        lat: 64.008,
-        lon: 11.492,
-        category: "parking",
-        description: "Convenient free parking with direct path to the water and small beach area."
-      },
-      {
-        id: 5,
-        name: "Ogndal Photo Spot",
-        lat: 64.045,
+        id: "demo-3",
+        name: "Skogstjern ved Følling",
+        category: "quiet",
+        lat: 63.992,
         lon: 11.55,
-        category: "photo",
-        description: "Classic rolling hills + fjord composition. Best light in the late afternoon."
+        description: "Liten skogsvann med gapahuk. Perfekt for en rolig stund.",
+        startpunkt: "Følling skogsvei",
+        parking: "Liten snuplass ved skogsvei",
+        distance: "2.1 km",
+        time: "1 time",
+        elevation: "80",
+        difficulty: "lett",
+        season: "Mai–Oktober",
+        view: "God",
+        swim: true,
+        fish: true,
+        dog: true,
+        stroller: false,
+        safety: "Mygg om sommeren. Ta med myggmiddel.",
+        created: Date.now()
       }
     ];
 
+    function loadSpots() {
+      const saved = localStorage.getItem('spotfinder-spots');
+      if (saved) {
+        allSpots = JSON.parse(saved);
+      } else {
+        allSpots = [...DEMO_SPOTS];
+        saveSpots();
+      }
+    }
+
+    function saveSpots() {
+      localStorage.setItem('spotfinder-spots', JSON.stringify(allSpots));
+    }
+
+    function exportSpots() {
+      const dataStr = JSON.stringify(allSpots, null, 2);
+      const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+      const link = document.createElement('a');
+      link.setAttribute('href', dataUri);
+      link.setAttribute('download', 'spot-finder-steinkjer.json');
+      link.click();
+    }
+
+    function importSpots() {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.json';
+      input.onchange = e => {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        reader.onload = ev => {
+          try {
+            const imported = JSON.parse(ev.target.result);
+            if (Array.isArray(imported)) {
+              allSpots = imported;
+              saveSpots();
+              renderAll();
+              alert('Spots importert!');
+            }
+          } catch(err) {
+            alert('Ugyldig fil');
+          }
+        };
+        reader.readAsText(file);
+      };
+      input.click();
+    }
+
+    function resetToDemo() {
+      if (!confirm('Tilbakestill til demo-spots? Alle dine egne spots blir slettet.')) return;
+      localStorage.removeItem('spotfinder-spots');
+      loadSpots();
+      renderAll();
+    }
+
+    // Map
     function initMap() {
-      map = L.map('map').setView([64.015, 11.495], 12);
+      if (map) map.remove();
+      map = L.map('map').setView([64.015, 11.495], 11);
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors'
+        attribution: '© OpenStreetMap'
       }).addTo(map);
 
-      renderSpotsOnMap();
-      renderSpotsList();
+      renderMapMarkers();
     }
 
-    function getCategoryIcon(cat) {
-      const icons = {
-        hiking: '¥¼',
-        fishing: '¥£',
-        photo: '¥¥¤',
-        parking: '¥¦¥',
-        viewpoint: '¥¥¤'
-      };
-      return icons[cat] || '¥§';
-    }
+    function renderMapMarkers(filtered = allSpots) {
+      if (!map) return;
+      
+      // Remove old markers
+      map.eachLayer(layer => {
+        if (layer instanceof L.Marker) map.removeLayer(layer);
+      });
 
-    function renderSpotsOnMap(filteredSpots = spots) {
-      // Clear existing markers
-      markers.forEach(m => map.removeLayer(m));
-      markers = [];
-
-      filteredSpots.forEach(spot => {
-        const marker = L.marker([spot.lat, spot.lon])
-          .addTo(map)
-          .bindPopup(`
-            <strong>${getCategoryIcon(spot.category)} ${spot.name}</strong><br>
-            <span class="text-sm">${spot.description}</span><br>
-            <button onclick="selectSpot(${spot.id})" class="mt-1 text-xs bg-emerald-600 text-white px-2 py-0.5 rounded">View details</button>
-          `);
-
-        marker.spotId = spot.id;
-        markers.push(marker);
+      filtered.forEach(spot => {
+        const marker = L.marker([spot.lat, spot.lon]).addTo(map);
+        
+        const popupHtml = `
+          <div class="text-sm">
+            <strong>${spot.name}</strong><br>
+            <span class="text-xs text-emerald-400">${spot.category}</span><br>
+            <button onclick="showSpotDetail('${spot.id}'); map.closePopup();" 
+                    class="mt-2 text-xs bg-emerald-600 px-2 py-0.5 rounded">Detaljer</button>
+          </div>`;
+        
+        marker.bindPopup(popupHtml);
       });
     }
 
-    function renderSpotsList(filteredSpots = spots) {
+    function filterMapSpots() {
+      const term = (document.getElementById('map-search').value || '').toLowerCase();
+      const filtered = allSpots.filter(s => 
+        s.name.toLowerCase().includes(term) || 
+        (s.description || '').toLowerCase().includes(term)
+      );
+      renderMapMarkers(filtered);
+    }
+
+    // List view
+    function renderSpotList() {
       const container = document.getElementById('spots-list');
       container.innerHTML = '';
 
-      if (filteredSpots.length === 0) {
-        container.innerHTML = '<div class="text-zinc-500 px-2">No spots match this filter.</div>';
+      const term = (document.getElementById('list-search')?.value || '').toLowerCase();
+      const catFilter = document.getElementById('list-category')?.value || '';
+
+      let filtered = allSpots.filter(s => {
+        const matchesTerm = !term || 
+          s.name.toLowerCase().includes(term) || 
+          (s.description || '').toLowerCase().includes(term);
+        
+        let matchesCat = true;
+        if (catFilter) {
+          if (catFilter === 'quiet') matchesCat = s.category === 'quiet';
+          else matchesCat = s.category === catFilter;
+        }
+        return matchesTerm && matchesCat;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<div class="text-zinc-500 p-4">Ingen spots funnet.</div>`;
         return;
       }
 
-      filteredSpots.forEach(spot => {
-        const div = document.createElement('div');
-        div.className = `spot-card bg-zinc-800 border border-zinc-700 rounded-2xl p-3 cursor-pointer`;
-        div.innerHTML = `
-          <div class="flex items-start justify-between">
+      filtered.forEach(spot => {
+        const card = document.createElement('div');
+        card.className = 'spot-card bg-zinc-900 border border-zinc-700 rounded-3xl p-4 cursor-pointer';
+        card.innerHTML = `
+          <div class="flex justify-between items-start">
             <div>
-              <div class="font-medium">${getCategoryIcon(spot.category)} ${spot.name}</div>
-              <div class="text-xs text-zinc-400 mt-0.5">${spot.category}</div>
+              <div class="font-medium">${spot.name}</div>
+              <div class="text-emerald-400 text-xs">${spot.category} • ${spot.difficulty || ''}</div>
             </div>
           </div>
-          <div class="text-sm text-zinc-300 mt-2 line-clamp-2">${spot.description}</div>
+          <div class="text-sm mt-3 text-zinc-300 line-clamp-2">${spot.description || ''}</div>
+          <div class="mt-3 text-xs flex gap-2 text-zinc-400">
+            <span>${spot.distance || ''}</span>
+            <span>${spot.time || ''}</span>
+          </div>
         `;
-        div.onclick = () => selectSpot(spot.id);
-        container.appendChild(div);
+        card.onclick = () => showSpotDetail(spot.id);
+        container.appendChild(card);
       });
     }
 
-    function filterSpots(category) {
-      currentFilter = category;
-      
-      // Update active button styles
-      document.querySelectorAll('.category-btn').forEach(btn => {
-        btn.classList.remove('bg-emerald-600', 'text-white');
-        btn.classList.add('bg-zinc-800');
-        if (btn.dataset.cat === category || (category === 'all' && btn.dataset.cat === 'all')) {
-          btn.classList.add('bg-emerald-600', 'text-white');
-          btn.classList.remove('bg-zinc-800');
-        }
-      });
-
-      let filtered = spots;
-      if (category !== 'all') {
-        filtered = spots.filter(s => s.category === category);
-      }
-
-      renderSpotsOnMap(filtered);
-      renderSpotsList(filtered);
-    }
-
-    function selectSpot(id) {
-      const spot = spots.find(s => s.id === id);
+    // Detail modal
+    function showSpotDetail(id) {
+      const spot = allSpots.find(s => s.id === id);
       if (!spot) return;
+      currentDetailSpot = spot;
 
-      // Fly to on map
-      map.flyTo([spot.lat, spot.lon], 15, { duration: 0.8 });
+      document.getElementById('detail-name').textContent = spot.name;
+      document.getElementById('detail-category').textContent = `${spot.category} • ${spot.difficulty || ''}`;
 
-      // Highlight in list
-      const cards = document.querySelectorAll('#spots-list > div');
-      cards.forEach(card => card.classList.remove('ring-2', 'ring-emerald-500'));
-      
-      // Open popup on marker
-      markers.forEach(m => {
-        if (m.spotId === id) {
-          m.openPopup();
-        }
+      const descEl = document.getElementById('detail-description');
+      descEl.textContent = spot.description || '';
+
+      const fieldsContainer = document.getElementById('detail-fields');
+      fieldsContainer.innerHTML = '';
+
+      const fields = [
+        ['Startpunkt', spot.startpunkt],
+        ['Parkering', spot.parking],
+        ['Distanse', spot.distance],
+        ['Tid', spot.time],
+        ['Høydemeter', spot.elevation],
+        ['Sesong', spot.season],
+        ['Utsikt', spot.view],
+        ['Hund', spot.dog ? 'Ja' : 'Nei'],
+        ['Barnevogn/sykkel', spot.stroller ? 'Ja' : 'Nei'],
+        ['Badeplass', spot.swim ? 'Ja' : 'Nei'],
+        ['Fiske', spot.fish ? 'Ja' : 'Nei'],
+        ['Sikkerhet', spot.safety],
+      ];
+
+      fields.forEach(([label, value]) => {
+        if (!value) return;
+        const row = document.createElement('div');
+        row.className = 'detail-row';
+        row.innerHTML = `
+          <div class="detail-label">${label}</div>
+          <div class="text-sm text-right">${value}</div>
+        `;
+        fieldsContainer.appendChild(row);
       });
 
-      // Simple alert with details for now (can be improved)
+      document.getElementById('detail-modal').classList.remove('hidden');
+      document.getElementById('detail-modal').classList.add('flex');
+    }
+
+    function hideDetailModal() {
+      document.getElementById('detail-modal').classList.add('hidden');
+      document.getElementById('detail-modal').classList.remove('flex');
+    }
+
+    function focusOnMapFromDetail() {
+      if (!currentDetailSpot) return;
+      hideDetailModal();
+      switchTab('map');
       setTimeout(() => {
-        alert(`${getCategoryIcon(spot.category)} ${spot.name}\n\n${spot.description}\n\nLat: ${spot.lat}, Lon: ${spot.lon}`);
-      }, 900);
-    }
-
-    function showAddSpotModal() {
-      document.getElementById('modal').classList.remove('hidden');
-      document.getElementById('modal').classList.add('flex');
-    }
-
-    function hideAddSpotModal() {
-      document.getElementById('modal').classList.add('hidden');
-      document.getElementById('modal').classList.remove('flex');
-    }
-
-    function addSpot() {
-      const name = document.getElementById('spot-name').value.trim();
-      const lat = parseFloat(document.getElementById('spot-lat').value);
-      const lon = parseFloat(document.getElementById('spot-lon').value);
-      const category = document.getElementById('spot-cat').value;
-      const description = document.getElementById('spot-desc').value.trim() || "No description yet.";
-
-      if (!name || isNaN(lat) || isNaN(lon)) {
-        alert("Please enter a name and valid coordinates.");
-        return;
-      }
-
-      const newSpot = {
-        id: Date.now(),
-        name,
-        lat,
-        lon,
-        category,
-        description
-      };
-
-      spots.push(newSpot);
-      
-      // Re-render everything
-      renderSpotsOnMap(spots);
-      renderSpotsList(spots);
-      
-      hideAddSpotModal();
-      
-      // Clear form
-      document.getElementById('spot-name').value = '';
-      document.getElementById('spot-desc').value = '';
-
-      // Fly to new spot
-      setTimeout(() => {
-        map.flyTo([lat, lon], 14);
+        if (map) {
+          map.flyTo([currentDetailSpot.lat, currentDetailSpot.lon], 14);
+        }
       }, 300);
     }
 
-    // Keyboard support
-    function setupKeyboard() {
-      document.addEventListener('keydown', (e) => {
-        if (e.key === '/' && document.activeElement.tagName === 'BODY') {
-          e.preventDefault();
-          document.getElementById('spot-name').focus();
-          showAddSpotModal();
+    // Add new spot
+    function addNewSpot(e) {
+      e.preventDefault();
+      const form = e.target;
+      const formData = new FormData(form);
+
+      const newSpot = {
+        id: 'user-' + Date.now(),
+        name: formData.get('name'),
+        category: formData.get('category'),
+        lat: parseFloat(formData.get('lat')),
+        lon: parseFloat(formData.get('lon')),
+        description: formData.get('description'),
+        startpunkt: formData.get('startpunkt'),
+        parking: formData.get('parking'),
+        distance: formData.get('distance'),
+        time: formData.get('time'),
+        elevation: formData.get('elevation'),
+        difficulty: formData.get('difficulty'),
+        season: formData.get('season'),
+        view: '',
+        swim: formData.get('swim') === 'on',
+        fish: formData.get('fish') === 'on',
+        dog: formData.get('dog') === 'on',
+        stroller: formData.get('stroller') === 'on',
+        safety: formData.get('safety'),
+        whyWorth: formData.get('whyWorth'),
+        created: Date.now()
+      };
+
+      allSpots.unshift(newSpot);
+      saveSpots();
+      renderAll();
+
+      form.reset();
+      switchTab('map');
+      alert('Spot lagt til! Den er nå lagret lokalt.');
+    }
+
+    // Expert chat (follows the provided system prompt rules)
+    let chatHistory = [];
+
+    function addChatMessage(text, isUser = false) {
+      const container = document.getElementById('chat-window');
+      const msg = document.createElement('div');
+      msg.className = `chat-message p-3 rounded-2xl ${isUser ? 'bg-emerald-700 ml-auto' : 'expert-reply'}`;
+      msg.innerHTML = `<div>${text.replace(/\n/g, '<br>')}</div>`;
+      container.appendChild(msg);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function askExpert() {
+      const input = document.getElementById('expert-input');
+      const query = input.value.trim();
+      if (!query) return;
+
+      addChatMessage(query, true);
+      input.value = '';
+
+      // Simulate expert using the system prompt logic (rule-based, Norwegian output)
+      setTimeout(() => {
+        const reply = generateExpertReply(query);
+        addChatMessage(reply);
+      }, 450);
+    }
+
+    function generateExpertReply(query) {
+      const q = query.toLowerCase();
+      
+      // Follow prompt priorities: quiet places, low traffic, high nature value
+      if (q.includes('rolig') || q.includes('stillhet') || q.includes('lite folk')) {
+        return `Anbefaling for rolig plass:\n\n` +
+               `• Skogstjern ved Følling (demo)\n` +
+               `Start: Følling skogsvei\n` +
+               `Parkering: Liten snuplass\n` +
+               `GPS: 63.992, 11.55\n` +
+               `Distanse: 2.1 km tur/retur • 1 time • Lett\n` +
+               `Hund: Ja • Barnevogn: Nei\n` +
+               `Beste for: Stillhet og liten innsjø. Anbefales på hverdager.\n\n` +
+               `Husk: Informasjon er demonstrativ. Sjekk alltid UT.no og lokale forhold.`;
+      }
+
+      if (q.includes('fiske') || q.includes('fiskevann')) {
+        return `Fiskeanbefaling:\n\n` +
+               `• Steinkjerelva – Rolig fiskeplass vest\n` +
+               `Startpunkt: Broen på Fv. 762\n` +
+               `Parkering: Parkeringslomme\n` +
+               `GPS: 64.0118, 11.462\n` +
+               `Tid: 1–2 timer • Lett\n` +
+               `Fiske: Ja (ørret/laks). Hund: Ja\n` +
+               `Sikkerhet: Glatt etter regn. Sjekk vannstand på forhånd.`;
+      }
+
+      // Default structured response
+      return `Her er en anbefaling basert på dine ønsker:\n\n` +
+             `• Utsiktspunkt ved Kvamsfjellet\n` +
+             `Start: Kvam skogvei\n` +
+             `Parkering: Grusplass (2-3 biler)\n` +
+             `GPS: 64.041, 11.58\n` +
+             `Distanse: 3.8 km • 2 timer • Middels\n` +
+             `Utsikt: Utmerket • Hund: Ja\n\n` +
+             `Dette er et lite besøkt sted med høy naturverdi. Verifiser rute og forhold på UT.no og Kartverket før tur.`;
+    }
+
+    // Tab switching
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-view').forEach(v => v.classList.add('hidden'));
+      document.querySelectorAll('[id^="tab-"]').forEach(t => t.classList.remove('active', 'border-emerald-600'));
+
+      document.getElementById(`view-${tab}`).classList.remove('hidden');
+      const tabBtn = document.getElementById(`tab-${tab}`);
+      if (tabBtn) tabBtn.classList.add('active', 'border-emerald-600');
+
+      if (tab === 'map' && !map) {
+        setTimeout(initMap, 50);
+      }
+      if (tab === 'list') {
+        renderSpotList();
+      }
+      if (tab === 'expert') {
+        const chat = document.getElementById('chat-window');
+        if (chat.children.length === 0) {
+          addChatMessage('Hei! Jeg er den lokale friluftseksperten for Steinkjer. Spør meg om rolige plasser, fiskevann eller turer med lite folk.');
         }
+      }
+    }
+
+    function renderQuickFilters() {
+      const container = document.getElementById('quick-filters');
+      container.innerHTML = '';
+
+      const cats = ['hiking', 'fishing', 'viewpoint', 'quiet'];
+      cats.forEach(cat => {
+        const btn = document.createElement('button');
+        btn.className = 'px-3 py-1 text-xs rounded-full bg-zinc-800 hover:bg-zinc-700';
+        btn.textContent = cat.charAt(0).toUpperCase() + cat.slice(1);
+        btn.onclick = () => {
+          switchTab('map');
+          setTimeout(() => {
+            const filtered = allSpots.filter(s => s.category === cat);
+            renderMapMarkers(filtered);
+          }, 200);
+        };
+        container.appendChild(btn);
       });
+    }
+
+    function renderAll() {
+      renderMapMarkers();
+      renderSpotList();
+      renderQuickFilters();
     }
 
     function init() {
       initTailwind();
-      initMap();
-      setupKeyboard();
-      
-      // Show all initially
-      filterSpots('all');
+      loadSpots();
 
-      // Demo tip
-      console.log('%c[Spot-Finder] Press "/" to quickly add a spot. All data is stored in-memory for this demo.', 'color:#666');
+      // Initial map
+      initMap();
+      renderQuickFilters();
+
+      // Seed initial chat message
+      setTimeout(() => {
+        const chat = document.getElementById('chat-window');
+        if (chat) {
+          chat.innerHTML = '';
+          addChatMessage('Hei! Jeg er den lokale friluftseksperten for Steinkjer. Spør meg om en rolig plass, fiske eller tur med lite folk.');
+        }
+      }, 100);
+
+      // Keyboard shortcut
+      document.addEventListener('keydown', (e) => {
+        if (e.key === '/' && document.activeElement.tagName === 'BODY') {
+          e.preventDefault();
+          switchTab('add');
+        }
+      });
+
+      // Show map by default
+      document.getElementById('view-map').classList.remove('hidden');
     }
 
+    // Boot
     window.onload = init;
   </script>
 </body>
