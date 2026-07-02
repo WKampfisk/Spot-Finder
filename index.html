@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spot-Finder • Steinkjer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    #map { height: 500px; border-radius: 12px; }
+    .spot-card { transition: all 0.2s; }
+    .spot-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1); }
+  </style>
+</head>
+<body class="bg-zinc-950 text-zinc-200">
+  <div class="max-w-7xl mx-auto p-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-8">
+      <div>
+        <h1 class="text-4xl font-bold tracking-tight">Spot-Finder</h1>
+        <p class="text-zinc-400 mt-1">Discover nature spots around Steinkjer &amp; Trøndelag</p>
+      </div>
+      <div class="flex gap-3">
+        <button onclick="showAddSpotModal()" 
+                class="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-xl font-medium flex items-center gap-2">
+          <span>+</span> Add Spot
+        </button>
+        <button onclick="filterSpots('all')" 
+                class="bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-xl font-medium">
+          All Spots
+        </button>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+      <!-- Map -->
+      <div class="lg:col-span-3 bg-zinc-900 rounded-3xl p-4 border border-zinc-800">
+        <div id="map" class="w-full"></div>
+        <p class="text-xs text-zinc-500 mt-2 text-center">Click markers or cards to see details. Data is local for now.</p>
+      </div>
+
+      <!-- Spots List -->
+      <div class="lg:col-span-2 bg-zinc-900 rounded-3xl p-4 border border-zinc-800 overflow-auto max-h-[520px]">
+        <h2 class="font-semibold mb-3 px-1">Spots nearby</h2>
+        <div id="spots-list" class="space-y-3"></div>
+      </div>
+    </div>
+
+    <!-- Categories -->
+    <div class="mt-6 flex flex-wrap gap-2">
+      <button onclick="filterSpots('all')" class="category-btn px-3 py-1 text-sm rounded-full bg-zinc-800 hover:bg-zinc-700 active:bg-emerald-600" data-cat="all">All</button>
+      <button onclick="filterSpots('hiking')" class="category-btn px-3 py-1 text-sm rounded-full bg-zinc-800 hover:bg-zinc-700" data-cat="hiking">¥¼ Hiking</button>
+      <button onclick="filterSpots('fishing')" class="category-btn px-3 py-1 text-sm rounded-full bg-zinc-800 hover:bg-zinc-700" data-cat="fishing">¥£ Fishing</button>
+      <button onclick="filterSpots('photo')" class="category-btn px-3 py-1 text-sm rounded-full bg-zinc-800 hover:bg-zinc-700" data-cat="photo">¥¥¤ Photo</button>
+      <button onclick="filterSpots('parking')" class="category-btn px-3 py-1 text-sm rounded-full bg-zinc-800 hover:bg-zinc-700" data-cat="parking">¥¦¥ Parking</button>
+      <button onclick="filterSpots('viewpoint')" class="category-btn px-3 py-1 text-sm rounded-full bg-zinc-800 hover:bg-zinc-700" data-cat="viewpoint">¥¥¤ Viewpoint</button>
+    </div>
+
+    <div class="mt-8 text-xs text-zinc-500">
+      Steinkjer area • Beitstadfjord • Innherred • Trøndelag<br>
+      Built as a starter for Spot-Finder. Add your own spots!
+    </div>
+  </div>
+
+  <!-- Add Spot Modal -->
+  <div id="modal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
+    <div class="bg-zinc-900 rounded-3xl p-6 w-full max-w-md border border-zinc-700">
+      <h3 class="text-xl font-semibold mb-4">Add a new spot</h3>
+      
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm mb-1">Name</label>
+          <input id="spot-name" type="text" class="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2" placeholder="e.g. Steinkjerelva West Access">
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm mb-1">Latitude</label>
+            <input id="spot-lat" type="text" class="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2" value="64.015">
+          </div>
+          <div>
+            <label class="block text-sm mb-1">Longitude</label>
+            <input id="spot-lon" type="text" class="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2" value="11.48">
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm mb-1">Category</label>
+          <select id="spot-cat" class="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2">
+            <option value="hiking">Hiking</option>
+            <option value="fishing">Fishing</option>
+            <option value="photo">Photography</option>
+            <option value="parking">Parking / Access</option>
+            <option value="viewpoint">Viewpoint</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm mb-1">Description</label>
+          <textarea id="spot-desc" rows="3" class="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2" placeholder="Short description..."></textarea>
+        </div>
+      </div>
+
+      <div class="flex gap-3 mt-6">
+        <button onclick="addSpot()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-2.5 rounded-2xl font-medium">Add Spot</button>
+        <button onclick="hideAddSpotModal()" class="flex-1 bg-zinc-800 hover:bg-zinc-700 py-2.5 rounded-2xl">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Tailwind script
+    function initTailwind() {
+      // Already using CDN classes
+    }
+
+    let map;
+    let markers = [];
+    let currentFilter = 'all';
+
+    // Sample spots around Steinkjer (realistic approximate locations)
+    let spots = [
+      {
+        id: 1,
+        name: "Steinkjerelva West Bank",
+        lat: 64.012,
+        lon: 11.465,
+        category: "fishing",
+        description: "Great access point for trout and salmon. Easy parking and short walk to the river."
+      },
+      {
+        id: 2,
+        name: "Beitstadfjord Viewpoint",
+        lat: 64.028,
+        lon: 11.512,
+        category: "viewpoint",
+        description: "Panoramic views over the fjord, especially beautiful at sunset."
+      },
+      {
+        id: 3,
+        name: "Skogstien Trailhead",
+        lat: 63.998,
+        lon: 11.521,
+        category: "hiking",
+        description: "Start of several forest hiking loops. Moderate difficulty, good for berry picking in season."
+      },
+      {
+        id: 4,
+        name: "Fjord Parking - Sjøfartsgata",
+        lat: 64.008,
+        lon: 11.492,
+        category: "parking",
+        description: "Convenient free parking with direct path to the water and small beach area."
+      },
+      {
+        id: 5,
+        name: "Ogndal Photo Spot",
+        lat: 64.045,
+        lon: 11.55,
+        category: "photo",
+        description: "Classic rolling hills + fjord composition. Best light in the late afternoon."
+      }
+    ];
+
+    function initMap() {
+      map = L.map('map').setView([64.015, 11.495], 12);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(map);
+
+      renderSpotsOnMap();
+      renderSpotsList();
+    }
+
+    function getCategoryIcon(cat) {
+      const icons = {
+        hiking: '¥¼',
+        fishing: '¥£',
+        photo: '¥¥¤',
+        parking: '¥¦¥',
+        viewpoint: '¥¥¤'
+      };
+      return icons[cat] || '¥§';
+    }
+
+    function renderSpotsOnMap(filteredSpots = spots) {
+      // Clear existing markers
+      markers.forEach(m => map.removeLayer(m));
+      markers = [];
+
+      filteredSpots.forEach(spot => {
+        const marker = L.marker([spot.lat, spot.lon])
+          .addTo(map)
+          .bindPopup(`
+            <strong>${getCategoryIcon(spot.category)} ${spot.name}</strong><br>
+            <span class="text-sm">${spot.description}</span><br>
+            <button onclick="selectSpot(${spot.id})" class="mt-1 text-xs bg-emerald-600 text-white px-2 py-0.5 rounded">View details</button>
+          `);
+
+        marker.spotId = spot.id;
+        markers.push(marker);
+      });
+    }
+
+    function renderSpotsList(filteredSpots = spots) {
+      const container = document.getElementById('spots-list');
+      container.innerHTML = '';
+
+      if (filteredSpots.length === 0) {
+        container.innerHTML = '<div class="text-zinc-500 px-2">No spots match this filter.</div>';
+        return;
+      }
+
+      filteredSpots.forEach(spot => {
+        const div = document.createElement('div');
+        div.className = `spot-card bg-zinc-800 border border-zinc-700 rounded-2xl p-3 cursor-pointer`;
+        div.innerHTML = `
+          <div class="flex items-start justify-between">
+            <div>
+              <div class="font-medium">${getCategoryIcon(spot.category)} ${spot.name}</div>
+              <div class="text-xs text-zinc-400 mt-0.5">${spot.category}</div>
+            </div>
+          </div>
+          <div class="text-sm text-zinc-300 mt-2 line-clamp-2">${spot.description}</div>
+        `;
+        div.onclick = () => selectSpot(spot.id);
+        container.appendChild(div);
+      });
+    }
+
+    function filterSpots(category) {
+      currentFilter = category;
+      
+      // Update active button styles
+      document.querySelectorAll('.category-btn').forEach(btn => {
+        btn.classList.remove('bg-emerald-600', 'text-white');
+        btn.classList.add('bg-zinc-800');
+        if (btn.dataset.cat === category || (category === 'all' && btn.dataset.cat === 'all')) {
+          btn.classList.add('bg-emerald-600', 'text-white');
+          btn.classList.remove('bg-zinc-800');
+        }
+      });
+
+      let filtered = spots;
+      if (category !== 'all') {
+        filtered = spots.filter(s => s.category === category);
+      }
+
+      renderSpotsOnMap(filtered);
+      renderSpotsList(filtered);
+    }
+
+    function selectSpot(id) {
+      const spot = spots.find(s => s.id === id);
+      if (!spot) return;
+
+      // Fly to on map
+      map.flyTo([spot.lat, spot.lon], 15, { duration: 0.8 });
+
+      // Highlight in list
+      const cards = document.querySelectorAll('#spots-list > div');
+      cards.forEach(card => card.classList.remove('ring-2', 'ring-emerald-500'));
+      
+      // Open popup on marker
+      markers.forEach(m => {
+        if (m.spotId === id) {
+          m.openPopup();
+        }
+      });
+
+      // Simple alert with details for now (can be improved)
+      setTimeout(() => {
+        alert(`${getCategoryIcon(spot.category)} ${spot.name}\n\n${spot.description}\n\nLat: ${spot.lat}, Lon: ${spot.lon}`);
+      }, 900);
+    }
+
+    function showAddSpotModal() {
+      document.getElementById('modal').classList.remove('hidden');
+      document.getElementById('modal').classList.add('flex');
+    }
+
+    function hideAddSpotModal() {
+      document.getElementById('modal').classList.add('hidden');
+      document.getElementById('modal').classList.remove('flex');
+    }
+
+    function addSpot() {
+      const name = document.getElementById('spot-name').value.trim();
+      const lat = parseFloat(document.getElementById('spot-lat').value);
+      const lon = parseFloat(document.getElementById('spot-lon').value);
+      const category = document.getElementById('spot-cat').value;
+      const description = document.getElementById('spot-desc').value.trim() || "No description yet.";
+
+      if (!name || isNaN(lat) || isNaN(lon)) {
+        alert("Please enter a name and valid coordinates.");
+        return;
+      }
+
+      const newSpot = {
+        id: Date.now(),
+        name,
+        lat,
+        lon,
+        category,
+        description
+      };
+
+      spots.push(newSpot);
+      
+      // Re-render everything
+      renderSpotsOnMap(spots);
+      renderSpotsList(spots);
+      
+      hideAddSpotModal();
+      
+      // Clear form
+      document.getElementById('spot-name').value = '';
+      document.getElementById('spot-desc').value = '';
+
+      // Fly to new spot
+      setTimeout(() => {
+        map.flyTo([lat, lon], 14);
+      }, 300);
+    }
+
+    // Keyboard support
+    function setupKeyboard() {
+      document.addEventListener('keydown', (e) => {
+        if (e.key === '/' && document.activeElement.tagName === 'BODY') {
+          e.preventDefault();
+          document.getElementById('spot-name').focus();
+          showAddSpotModal();
+        }
+      });
+    }
+
+    function init() {
+      initTailwind();
+      initMap();
+      setupKeyboard();
+      
+      // Show all initially
+      filterSpots('all');
+
+      // Demo tip
+      console.log('%c[Spot-Finder] Press "/" to quickly add a spot. All data is stored in-memory for this demo.', 'color:#666');
+    }
+
+    window.onload = init;
+  </script>
+</body>
+</html>
