@@ -129,6 +129,12 @@
             <!-- Messages populated by JS -->
           </div>
 
+          <div class="mb-3 flex flex-wrap gap-2">
+            <button onclick="quickExpertQuery('en rolig plass')" class="text-xs bg-zinc-800 hover:bg-zinc-700 px-3 py-1 rounded-full">En rolig plass</button>
+            <button onclick="quickExpertQuery('fiskevann med lite folk')" class="text-xs bg-zinc-800 hover:bg-zinc-700 px-3 py-1 rounded-full">Fiskevann</button>
+            <button onclick="quickExpertQuery('utsiktspunkt skjult perle')" class="text-xs bg-zinc-800 hover:bg-zinc-700 px-3 py-1 rounded-full">Utsiktspunkt</button>
+            <button onclick="quickExpertQuery('tur med hund og lite trafikk')" class="text-xs bg-zinc-800 hover:bg-zinc-700 px-3 py-1 rounded-full">Med hund</button>
+          </div>
           <div class="flex gap-2">
             <input id="expert-input" type="text" 
                    class="flex-1 bg-zinc-900 border border-zinc-700 rounded-2xl px-4 py-3 text-sm"
@@ -137,7 +143,7 @@
             <button onclick="askExpert()" 
                     class="bg-emerald-600 hover:bg-emerald-500 px-6 rounded-2xl font-medium">Spør</button>
           </div>
-          <div class="text-[10px] text-zinc-500 mt-2">Svarene følger de strenge reglene i systemprompten. Alltid verifiser mot oppdaterte kilder.</div>
+          <div class="text-[10px] text-zinc-500 mt-2">Svarene følger de strenge reglene i systemprompten (lite besøkte, stillhet, høy naturverdi). Alltid verifiser mot oppdaterte kilder.</div>
         </div>
       </div>
 
@@ -631,42 +637,87 @@
       }, 450);
     }
 
+    function quickExpertQuery(text) {
+      const input = document.getElementById('expert-input');
+      input.value = text;
+      askExpert();
+    }
+
     function generateExpertReply(query) {
       const q = query.toLowerCase();
+      const isQuiet = q.includes('rolig') || q.includes('stillhet') || q.includes('lite folk') || q.includes('skjult') || q.includes('ensom');
       
-      // Follow prompt priorities: quiet places, low traffic, high nature value
-      if (q.includes('rolig') || q.includes('stillhet') || q.includes('lite folk')) {
-        return `Anbefaling for rolig plass:\n\n` +
-               `• Skogstjern ved Følling (demo)\n` +
-               `Start: Følling skogsvei\n` +
-               `Parkering: Liten snuplass\n` +
+      let base = '';
+      
+      if (isQuiet) {
+        base = `**Anbefaling for rolig plass (lite besøkt, høy naturverdi):**\n\n` +
+               `• Skogstjern ved Følling\n` +
+               `Kort beskrivelse: Liten skogsvann med gapahuk. Perfekt for en rolig stund med minimal trafikk.\n` +
+               `Hvorfor verdt turen: Høy stillhet, god for fuglekikking og avslapning. Skjult perle.\n` +
+               `Startpunkt: Følling skogsvei\n` +
+               `Parkeringsplass: Liten snuplass ved skogsvei (begrenset)\n` +
                `GPS: 63.992, 11.55\n` +
-               `Distanse: 2.1 km tur/retur • 1 time • Lett\n` +
-               `Hund: Ja • Barnevogn: Nei\n` +
-               `Beste for: Stillhet og liten innsjø. Anbefales på hverdager.\n\n` +
-               `Husk: Informasjon er demonstrativ. Sjekk alltid UT.no og lokale forhold.`;
-      }
-
-      if (q.includes('fiske') || q.includes('fiskevann')) {
-        return `Fiskeanbefaling:\n\n` +
+               `Distanse tur/retur: 2.1 km\n` +
+               `Estimert tidsbruk: 1 time\n` +
+               `Høydemeter: 80\n` +
+               `Vanskelighetsgrad: Lett\n` +
+               `Type underlag: Skogssti / sti\n` +
+               `Egnet årstid: Mai–Oktober\n` +
+               `Utsikt: God\n` +
+               `Bade- eller fiskemuligheter: Ja (bading og fiske)\n` +
+               `Om hund passer: Ja\n` +
+               `Om barnevogn eller sykkel er mulig: Nei (smal sti)\n` +
+               `Mobildekning: Variabel (sjekk før tur)\n` +
+               `Vær- og sikkerhetshensyn: Mygg om sommeren. Ta med myggmiddel. Stien kan være våt.\n` +
+               `Lokale regler: Følg allemannsretten. Ikke lev etter deg. Bål kun på godkjente plasser.\n\n` +
+               `Prioritet: Lite besøkt, stillhet, høy naturverdi. Anbefales på hverdager.`;
+      } else if (q.includes('fiske') || q.includes('fiskevann') || q.includes('elve')) {
+        base = `**Fiskeanbefaling (rolig tilgang):**\n\n` +
                `• Steinkjerelva – Rolig fiskeplass vest\n` +
+               `Kort beskrivelse: Rolig del av elva med god tilgang for fluefiske. Lite folk på ukedager.\n` +
+               `Hvorfor verdt turen: God bestand av ørret og laks, naturskjønn elvebredd.\n` +
                `Startpunkt: Broen på Fv. 762\n` +
-               `Parkering: Parkeringslomme\n` +
+               `Parkeringsplass: Liten parkeringslomme 50m før broen\n` +
                `GPS: 64.0118, 11.462\n` +
-               `Tid: 1–2 timer • Lett\n` +
-               `Fiske: Ja (ørret/laks). Hund: Ja\n` +
-               `Sikkerhet: Glatt etter regn. Sjekk vannstand på forhånd.`;
+               `Distanse tur/retur: 1.2 km\n` +
+               `Estimert tidsbruk: 1–2 timer\n` +
+               `Høydemeter: 20\n` +
+               `Vanskelighetsgrad: Lett\n` +
+               `Type underlag: Sti / elvebredd\n` +
+               `Egnet årstid: Mai–September\n` +
+               `Utsikt: Middels\n` +
+               `Bade- eller fiskemuligheter: Fiskemuligheter (ørret/laks)\n` +
+               `Om hund passer: Ja\n` +
+               `Om barnevogn eller sykkel er mulig: Delvis (sykkel mulig på deler)\n` +
+               `Mobildekning: God\n` +
+               `Vær- og sikkerhetshensyn: Glatt stein langs elva etter regn. Sjekk vannstand.\n` +
+               `Lokale regler: Fiskekort kan være nødvendig. Sjekk lokale forskrifter.\n\n` +
+               `Prioritet: Lett adkomst, god fiskeopplevelse, ikke overfylt.`;
+      } else {
+        base = `**Anbefaling basert på dine ønsker (lite besøkt fokus):**\n\n` +
+               `• Utsiktspunkt ved Kvamsfjellet\n` +
+               `Kort beskrivelse: Lite besøkt utsiktspunkt over Beitstadfjorden og innlandet.\n` +
+               `Hvorfor verdt turen: Panoramautsikt, høy naturverdi, skjult perle med lite folk.\n` +
+               `Startpunkt: Parkering ved Kvam skogvei\n` +
+               `Parkeringsplass: Grusplass ved skogsvei (2-3 biler)\n` +
+               `GPS: 64.041, 11.58\n` +
+               `Distanse tur/retur: 3.8 km\n` +
+               `Estimert tidsbruk: 2 timer\n` +
+               `Høydemeter: 280\n` +
+               `Vanskelighetsgrad: Middels\n` +
+               `Type underlag: Skogssti\n` +
+               `Egnet årstid: Hele året\n` +
+               `Utsikt: Utmerket\n` +
+               `Bade- eller fiskemuligheter: Nei\n` +
+               `Om hund passer: Ja\n` +
+               `Om barnevogn eller sykkel er mulig: Nei (bratt parti)\n` +
+               `Mobildekning: Variabel\n` +
+               `Vær- og sikkerhetshensyn: Bratt parti siste 400m. Ikke anbefalt i mørket eller dårlig vær.\n` +
+               `Lokale regler: Følg stiene. Respekter naturen.\n\n` +
+               `Dette er et lite besøkt sted med høy naturverdi. Verifiser rute og forhold på UT.no og Kartverket før tur.`;
       }
-
-      // Default structured response
-      return `Her er en anbefaling basert på dine ønsker:\n\n` +
-             `• Utsiktspunkt ved Kvamsfjellet\n` +
-             `Start: Kvam skogvei\n` +
-             `Parkering: Grusplass (2-3 biler)\n` +
-             `GPS: 64.041, 11.58\n` +
-             `Distanse: 3.8 km • 2 timer • Middels\n` +
-             `Utsikt: Utmerket • Hund: Ja\n\n` +
-             `Dette er et lite besøkt sted med høy naturverdi. Verifiser rute og forhold på UT.no og Kartverket før tur.`;
+      
+      return base + `\n\n**Merk:** Dette er en demonstrasjon basert på systemprompten. Sjekk alltid oppdaterte kilder (UT.no, Steinkjer kommune, Kartverket) og lokale forhold før tur. Informasjon kan være usikker.`;
     }
 
     // Tab switching
@@ -687,7 +738,7 @@
       if (tab === 'expert') {
         const chat = document.getElementById('chat-window');
         if (chat.children.length === 0) {
-          addChatMessage('Hei! Jeg er den lokale friluftseksperten for Steinkjer. Spør meg om rolige plasser, fiskevann eller turer med lite folk.');
+          addChatMessage('Hei! Jeg er den lokale friluftseksperten for Steinkjer kommune. Jeg prioriterer lite besøkte steder, skjulte perler, stillhet og høy naturverdi. Spør om en rolig plass, fiske eller tur!');
         }
       }
     }
